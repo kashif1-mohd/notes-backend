@@ -1,22 +1,20 @@
 const express = require("express");
-const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
 
+const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static("dist"));
-// app.use(morgan("tiny"));
+
+// Custom token for morgan to log request body
 morgan.token("req-body", (req) => {
-  if (req.method === "POST") {
-    return JSON.stringify(req.body);
-  }
-  return "";
+  return req.method === "POST" ? JSON.stringify(req.body) : "";
 });
 
-//Middle for logging with custom format
+// Custom morgan logging
 app.use(
   morgan(
     ":method :url :status :res[content-length] - :response-time ms :req-body"
@@ -41,8 +39,6 @@ let notes = [
   },
 ];
 
-app.use(express.static("dist"));
-
 const requestLogger = (request, response, next) => {
   console.log("Method:", request.method);
   console.log("Path:  ", request.path);
@@ -51,16 +47,7 @@ const requestLogger = (request, response, next) => {
   next();
 };
 
-const cors = require("cors");
-
-app.use(cors());
-
-app.use(express.json());
 app.use(requestLogger);
-
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "unknown endpoint" });
-};
 
 app.get("/", (request, response) => {
   response.send("<h1>Hello World!</h1>");
@@ -101,9 +88,28 @@ app.get("/api/notes/:id", (request, response) => {
   if (note) {
     response.json(note);
   } else {
-    console.log("x");
     response.status(404).end();
   }
+});
+
+app.put("/api/notes/:id", (request, response, next) => {
+  const body = request.body;
+
+  const note = {
+    content: body.content,
+    important: body.important,
+  };
+
+  note
+    .findByIdAndUpdate(request.params.id, note, { new: true })
+    .then((updatedNote) => {
+      if (updatedNote) {
+        response.json(updatedNote);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
 app.delete("/api/notes/:id", (request, response) => {
@@ -112,6 +118,10 @@ app.delete("/api/notes/:id", (request, response) => {
 
   response.status(204).end();
 });
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
 
 app.use(unknownEndpoint);
 
