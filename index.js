@@ -5,9 +5,10 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.use(express.static("dist"));
+
 app.use(cors());
 app.use(express.json());
-app.use(express.static("dist"));
 
 // Custom token for morgan to log request body
 morgan.token("req-body", (req) => {
